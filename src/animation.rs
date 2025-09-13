@@ -295,7 +295,7 @@ pub fn run_animation(
 }
 
 pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
-    let mut nothing_bruh_content = include_str!("../nothing_bruh.ans").to_string();
+    let nothing_bruh_content = include_str!("../nothing_bruh.ans").to_string();
 
     #[cfg(windows)]
     {

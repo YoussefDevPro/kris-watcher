@@ -1,7 +1,13 @@
 [package]
-name = "git-watcher"
+name = "kris-watcher"
 version = "0.1.0"
 edition = "2021"
+description = "hire this guy so he can make sure that u don't forget to git commit ur changes"
+license = "MIT"
+homepage = "https://github.com/youssef/git-watcher"
+repository = "https://github.com/youssef/git-watcher"
+keywords = ["git", "watcher", "cli", "terminal"]
+categories = ["development-tools::build-utils", "command-line-utilities"]
 
 [dependencies]
 notify-rust = "4"
