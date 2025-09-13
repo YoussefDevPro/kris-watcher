@@ -1,0 +1,135 @@
+use notify_rust::Notification;
+use regex::Regex;
+use std::process::Command;
+use std::thread;
+use std::time::Duration;
+
+#[derive(Debug, Clone, Copy)]
+pub struct GitStats {
+    pub insertions: u32,
+    pub deletions: u32,
+    pub total_changes: u32,
+}
+
+pub fn git_watcher_loop() {
+    let mut previous_stats: Option<GitStats> = None;
+
+    loop {
+        let current_stats = get_git_diff_stats();
+        send_notification(current_stats, previous_stats);
+        previous_stats = current_stats;
+        thread::sleep(Duration::from_secs(30 * 60)); // 30 minutes
+    }
+}
+
+pub fn is_in_git_repo() -> bool {
+    let output = Command::new("git")
+        .arg("rev-parse")
+        .arg("--is-inside-work-tree")
+        .output();
+
+    match output {
+        Ok(output) => {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return stdout.trim() == "true";
+            }
+            false
+        }
+        Err(_) => false,
+    }
+}
+
+pub fn get_git_diff_stats() -> Option<GitStats> {
+    let output = Command::new("git")
+        .arg("diff")
+        .arg("--stat")
+        .arg("HEAD")
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let re = Regex::new(r"(\d+)\s+insertions\(\+\),\s+(\d+)\s+deletions\(-\)").unwrap();
+
+    let mut insertions = 0;
+    let mut deletions = 0;
+
+    if let Some(captures) = re.captures(stdout.as_ref()) {
+        insertions = captures
+            .get(1)
+            .and_then(|m| m.as_str().parse().ok())
+            .unwrap_or(0);
+        deletions = captures
+            .get(2)
+            .and_then(|m| m.as_str().parse().ok())
+            .unwrap_or(0);
+    }
+
+    let total_changes = insertions + deletions;
+
+    Some(GitStats {
+        insertions,
+        deletions,
+        total_changes,
+    })
+}
+
+fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<GitStats>) {
+    let body = match current_stats {
+        Some(current) => {
+            let mut message = String::new();
+
+            if current.insertions == 0 && current.deletions == 0 {
+                message.push_str("No changes yet? Time to get to work!");
+            } else {
+                message.push_str(&format!(
+                    "You have {} insertions and {} deletions. ",
+                    current.insertions, current.deletions
+                ));
+
+                if let Some(previous) = previous_stats {
+                    if current.deletions > previous.deletions && current.deletions > 10 {
+                        // deleting a lot for some reason
+                        message
+                            .push_str("You're on a deleting spree! Cleaning up code like a boss!");
+                    } else if current.insertions > previous.insertions && current.insertions > 20 {
+                        // becoming real ig
+                        message.push_str("Wow, a sudden burst of coding! Keep that momentum!");
+                    } else if current.deletions > current.insertions && current.deletions > 10 {
+                        // peak optimishashtiong :3
+                        message.push_str("Optimizing like a pro! Less is more, right?");
+                    } else if current.insertions > current.deletions && current.insertions > 20 {
+                        // too much insertion
+                        message.push_str("Look at you, coding away! Keep it up!");
+                    } else if current.total_changes > 30 && previous.total_changes < 5 {
+                        // sudden tryharding
+                        message.push_str("You've been quiet, but now you're a coding machine!");
+                    }
+                } else {
+                    // peak optomozation
+                    if current.deletions > current.insertions && current.deletions > 10 {
+                        message.push_str("Optimizing like a pro! Less is more, right?");
+                    } else if current.insertions > current.deletions && current.insertions > 20 {
+                        message.push_str("Look at you, coding away! Keep it up!");
+                    }
+                }
+                // do not forget to commit ur changes !!
+                if message.is_empty() || !message.contains("commit") {
+                    message.push_str("Don't forget to commit!");
+                }
+            }
+            message
+        }
+        None => "Don't forget to commit your changes!".to_string(),
+    };
+
+    Notification::new()
+        .summary("Git Watcher")
+        .body(&body)
+        .show()
+        .unwrap();
+}
