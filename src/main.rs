@@ -8,9 +8,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     if git::is_in_git_repo() {
         thread::spawn(git::git_watcher_loop);
     } else {
-        let mut terminal = animation::setup_terminal()?;
-        animation::display_nothing_bruh(&mut terminal)?;
-        animation::restore_terminal(&mut terminal)?;
+        animation::display_nothing_bruh()?;
         return Ok(());
     }
 

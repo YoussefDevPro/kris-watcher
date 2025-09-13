@@ -114,46 +114,14 @@ pub fn run_animation(
     Ok(())
 }
 
-pub fn display_nothing_bruh(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-) -> Result<(), Box<dyn Error>> {
-    let nothing_bruh_content = fs::read_to_string("nothing_bruh.ans")?;
-    let ansi_text = nothing_bruh_content.as_bytes().into_text().unwrap();
+pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
+    let mut nothing_bruh_content = fs::read_to_string("nothing_bruh.ans")?;
 
-    terminal.draw(|f| {
-        let area = f.area();
-        f.render_widget(Clear, area); // Clear the entire area
-
-        let vertical_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Min(0),
-                Constraint::Length(40),
-                Constraint::Min(0),
-            ])
-            .split(area);
-
-        let horizontal_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Min(0),
-                Constraint::Length(80),
-                Constraint::Min(0),
-            ])
-            .split(vertical_layout[1]);
-
-        let paragraph = Paragraph::new(ansi_text).alignment(Alignment::Center);
-        f.render_widget(paragraph, horizontal_layout[1]);
-    })?;
-
-    // waiting for the user to press da button
-    loop {
-        if crossterm::event::poll(Duration::from_millis(100))? {
-            if let Event::Key(_) = event::read()? {
-                break;
-            }
-        }
+    #[cfg(windows)]
+    {
+        nothing_bruh_content = nothing_bruh_content.replace("\n", "\r\n");
     }
 
+    print!("{}", nothing_bruh_content);
     Ok(())
 }
