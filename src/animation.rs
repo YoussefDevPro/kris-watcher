@@ -4,13 +4,13 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use lazy_static::lazy_static;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     prelude::*,
     widgets::{Clear, Paragraph},
 };
 use std::error::Error;
-use std::fs;
 use std::io::{self, Stdout};
 use std::time::Duration;
 use std::time::Instant;
@@ -37,30 +37,210 @@ pub fn restore_terminal(
     Ok(())
 }
 
+lazy_static! {
+    static ref PREPROCESSED_FRAMES: Vec<Text<'static>> = {
+        let mut frames_content: Vec<&'static str> = Vec::new();
+        frames_content.push(include_str!("../frames/frame_000.ans")); // this freaking thing is
+                                                                      // made by ai, okay ?  don't
+                                                                      // judge me, i want to do it
+                                                                      // like that >:3
+        frames_content.push(include_str!("../frames/frame_001.ans"));
+        frames_content.push(include_str!("../frames/frame_002.ans"));
+        frames_content.push(include_str!("../frames/frame_003.ans"));
+        frames_content.push(include_str!("../frames/frame_004.ans"));
+        frames_content.push(include_str!("../frames/frame_005.ans"));
+        frames_content.push(include_str!("../frames/frame_006.ans"));
+        frames_content.push(include_str!("../frames/frame_007.ans"));
+        frames_content.push(include_str!("../frames/frame_008.ans"));
+        frames_content.push(include_str!("../frames/frame_009.ans"));
+        frames_content.push(include_str!("../frames/frame_010.ans"));
+        frames_content.push(include_str!("../frames/frame_011.ans"));
+        frames_content.push(include_str!("../frames/frame_012.ans"));
+        frames_content.push(include_str!("../frames/frame_013.ans"));
+        frames_content.push(include_str!("../frames/frame_014.ans"));
+        frames_content.push(include_str!("../frames/frame_015.ans"));
+        frames_content.push(include_str!("../frames/frame_016.ans"));
+        frames_content.push(include_str!("../frames/frame_017.ans"));
+        frames_content.push(include_str!("../frames/frame_018.ans"));
+        frames_content.push(include_str!("../frames/frame_019.ans"));
+        frames_content.push(include_str!("../frames/frame_020.ans"));
+        frames_content.push(include_str!("../frames/frame_021.ans"));
+        frames_content.push(include_str!("../frames/frame_022.ans"));
+        frames_content.push(include_str!("../frames/frame_023.ans"));
+        frames_content.push(include_str!("../frames/frame_024.ans"));
+        frames_content.push(include_str!("../frames/frame_025.ans"));
+        frames_content.push(include_str!("../frames/frame_026.ans"));
+        frames_content.push(include_str!("../frames/frame_027.ans"));
+        frames_content.push(include_str!("../frames/frame_028.ans"));
+        frames_content.push(include_str!("../frames/frame_029.ans"));
+        frames_content.push(include_str!("../frames/frame_030.ans"));
+        frames_content.push(include_str!("../frames/frame_031.ans"));
+        frames_content.push(include_str!("../frames/frame_032.ans"));
+        frames_content.push(include_str!("../frames/frame_033.ans"));
+        frames_content.push(include_str!("../frames/frame_034.ans"));
+        frames_content.push(include_str!("../frames/frame_035.ans"));
+        frames_content.push(include_str!("../frames/frame_036.ans"));
+        frames_content.push(include_str!("../frames/frame_037.ans"));
+        frames_content.push(include_str!("../frames/frame_038.ans"));
+        frames_content.push(include_str!("../frames/frame_039.ans"));
+        frames_content.push(include_str!("../frames/frame_040.ans"));
+        frames_content.push(include_str!("../frames/frame_041.ans"));
+        frames_content.push(include_str!("../frames/frame_042.ans"));
+        frames_content.push(include_str!("../frames/frame_043.ans"));
+        frames_content.push(include_str!("../frames/frame_044.ans"));
+        frames_content.push(include_str!("../frames/frame_045.ans"));
+        frames_content.push(include_str!("../frames/frame_046.ans"));
+        frames_content.push(include_str!("../frames/frame_047.ans"));
+        frames_content.push(include_str!("../frames/frame_048.ans"));
+        frames_content.push(include_str!("../frames/frame_049.ans"));
+        frames_content.push(include_str!("../frames/frame_050.ans"));
+        frames_content.push(include_str!("../frames/frame_051.ans"));
+        frames_content.push(include_str!("../frames/frame_052.ans"));
+        frames_content.push(include_str!("../frames/frame_053.ans"));
+        frames_content.push(include_str!("../frames/frame_054.ans"));
+        frames_content.push(include_str!("../frames/frame_055.ans"));
+        frames_content.push(include_str!("../frames/frame_056.ans"));
+        frames_content.push(include_str!("../frames/frame_057.ans"));
+        frames_content.push(include_str!("../frames/frame_058.ans"));
+        frames_content.push(include_str!("../frames/frame_059.ans"));
+        frames_content.push(include_str!("../frames/frame_060.ans"));
+        frames_content.push(include_str!("../frames/frame_061.ans"));
+        frames_content.push(include_str!("../frames/frame_062.ans"));
+        frames_content.push(include_str!("../frames/frame_063.ans"));
+        frames_content.push(include_str!("../frames/frame_064.ans"));
+        frames_content.push(include_str!("../frames/frame_065.ans"));
+        frames_content.push(include_str!("../frames/frame_066.ans"));
+        frames_content.push(include_str!("../frames/frame_067.ans"));
+        frames_content.push(include_str!("../frames/frame_068.ans"));
+        frames_content.push(include_str!("../frames/frame_069.ans"));
+        frames_content.push(include_str!("../frames/frame_070.ans"));
+        frames_content.push(include_str!("../frames/frame_071.ans"));
+        frames_content.push(include_str!("../frames/frame_072.ans"));
+        frames_content.push(include_str!("../frames/frame_073.ans"));
+        frames_content.push(include_str!("../frames/frame_074.ans"));
+        frames_content.push(include_str!("../frames/frame_075.ans"));
+        frames_content.push(include_str!("../frames/frame_076.ans"));
+        frames_content.push(include_str!("../frames/frame_077.ans"));
+        frames_content.push(include_str!("../frames/frame_078.ans"));
+        frames_content.push(include_str!("../frames/frame_079.ans"));
+        frames_content.push(include_str!("../frames/frame_080.ans"));
+        frames_content.push(include_str!("../frames/frame_081.ans"));
+        frames_content.push(include_str!("../frames/frame_082.ans"));
+        frames_content.push(include_str!("../frames/frame_083.ans"));
+        frames_content.push(include_str!("../frames/frame_084.ans"));
+        frames_content.push(include_str!("../frames/frame_085.ans"));
+        frames_content.push(include_str!("../frames/frame_086.ans"));
+        frames_content.push(include_str!("../frames/frame_087.ans"));
+        frames_content.push(include_str!("../frames/frame_088.ans"));
+        frames_content.push(include_str!("../frames/frame_089.ans"));
+        frames_content.push(include_str!("../frames/frame_090.ans"));
+        frames_content.push(include_str!("../frames/frame_091.ans"));
+        frames_content.push(include_str!("../frames/frame_092.ans"));
+        frames_content.push(include_str!("../frames/frame_093.ans"));
+        frames_content.push(include_str!("../frames/frame_094.ans"));
+        frames_content.push(include_str!("../frames/frame_095.ans"));
+        frames_content.push(include_str!("../frames/frame_096.ans"));
+        frames_content.push(include_str!("../frames/frame_097.ans"));
+        frames_content.push(include_str!("../frames/frame_098.ans"));
+        frames_content.push(include_str!("../frames/frame_099.ans"));
+        frames_content.push(include_str!("../frames/frame_100.ans"));
+        frames_content.push(include_str!("../frames/frame_101.ans"));
+        frames_content.push(include_str!("../frames/frame_102.ans"));
+        frames_content.push(include_str!("../frames/frame_103.ans"));
+        frames_content.push(include_str!("../frames/frame_104.ans"));
+        frames_content.push(include_str!("../frames/frame_105.ans"));
+        frames_content.push(include_str!("../frames/frame_106.ans"));
+        frames_content.push(include_str!("../frames/frame_107.ans"));
+        frames_content.push(include_str!("../frames/frame_108.ans"));
+        frames_content.push(include_str!("../frames/frame_109.ans"));
+        frames_content.push(include_str!("../frames/frame_110.ans"));
+        frames_content.push(include_str!("../frames/frame_111.ans"));
+        frames_content.push(include_str!("../frames/frame_112.ans"));
+        frames_content.push(include_str!("../frames/frame_113.ans"));
+        frames_content.push(include_str!("../frames/frame_114.ans"));
+        frames_content.push(include_str!("../frames/frame_115.ans"));
+        frames_content.push(include_str!("../frames/frame_116.ans"));
+        frames_content.push(include_str!("../frames/frame_117.ans"));
+        frames_content.push(include_str!("../frames/frame_118.ans"));
+        frames_content.push(include_str!("../frames/frame_119.ans"));
+        frames_content.push(include_str!("../frames/frame_120.ans"));
+        frames_content.push(include_str!("../frames/frame_121.ans"));
+        frames_content.push(include_str!("../frames/frame_122.ans"));
+        frames_content.push(include_str!("../frames/frame_123.ans"));
+        frames_content.push(include_str!("../frames/frame_124.ans"));
+        frames_content.push(include_str!("../frames/frame_125.ans"));
+        frames_content.push(include_str!("../frames/frame_126.ans"));
+        frames_content.push(include_str!("../frames/frame_127.ans"));
+        frames_content.push(include_str!("../frames/frame_128.ans"));
+        frames_content.push(include_str!("../frames/frame_129.ans"));
+        frames_content.push(include_str!("../frames/frame_130.ans"));
+        frames_content.push(include_str!("../frames/frame_131.ans"));
+        frames_content.push(include_str!("../frames/frame_132.ans"));
+        frames_content.push(include_str!("../frames/frame_133.ans"));
+        frames_content.push(include_str!("../frames/frame_134.ans"));
+        frames_content.push(include_str!("../frames/frame_135.ans"));
+        frames_content.push(include_str!("../frames/frame_136.ans"));
+        frames_content.push(include_str!("../frames/frame_137.ans"));
+        frames_content.push(include_str!("../frames/frame_138.ans"));
+        frames_content.push(include_str!("../frames/frame_139.ans"));
+        frames_content.push(include_str!("../frames/frame_140.ans"));
+        frames_content.push(include_str!("../frames/frame_141.ans"));
+        frames_content.push(include_str!("../frames/frame_142.ans"));
+        frames_content.push(include_str!("../frames/frame_143.ans"));
+        frames_content.push(include_str!("../frames/frame_144.ans"));
+        frames_content.push(include_str!("../frames/frame_145.ans"));
+        frames_content.push(include_str!("../frames/frame_146.ans"));
+        frames_content.push(include_str!("../frames/frame_147.ans"));
+        frames_content.push(include_str!("../frames/frame_148.ans"));
+        frames_content.push(include_str!("../frames/frame_149.ans"));
+        frames_content.push(include_str!("../frames/frame_150.ans"));
+        frames_content.push(include_str!("../frames/frame_151.ans"));
+        frames_content.push(include_str!("../frames/frame_152.ans"));
+        frames_content.push(include_str!("../frames/frame_153.ans"));
+        frames_content.push(include_str!("../frames/frame_154.ans"));
+        frames_content.push(include_str!("../frames/frame_155.ans"));
+        frames_content.push(include_str!("../frames/frame_156.ans"));
+        frames_content.push(include_str!("../frames/frame_157.ans"));
+        frames_content.push(include_str!("../frames/frame_158.ans"));
+        frames_content.push(include_str!("../frames/frame_159.ans"));
+        frames_content.push(include_str!("../frames/frame_160.ans"));
+        frames_content.push(include_str!("../frames/frame_161.ans"));
+        frames_content.push(include_str!("../frames/frame_162.ans"));
+        frames_content.push(include_str!("../frames/frame_163.ans"));
+        frames_content.push(include_str!("../frames/frame_164.ans"));
+        frames_content.push(include_str!("../frames/frame_165.ans"));
+        frames_content.push(include_str!("../frames/frame_166.ans"));
+        frames_content.push(include_str!("../frames/frame_167.ans"));
+        frames_content.push(include_str!("../frames/frame_168.ans"));
+        frames_content.push(include_str!("../frames/frame_169.ans"));
+        frames_content.push(include_str!("../frames/frame_170.ans"));
+        frames_content.push(include_str!("../frames/frame_171.ans"));
+        frames_content.push(include_str!("../frames/frame_172.ans"));
+        frames_content.push(include_str!("../frames/frame_173.ans"));
+        frames_content.push(include_str!("../frames/frame_174.ans"));
+        frames_content.push(include_str!("../frames/frame_175.ans"));
+        frames_content.push(include_str!("../frames/frame_176.ans"));
+        frames_content.push(include_str!("../frames/frame_177.ans"));
+        frames_content.push(include_str!("../frames/frame_178.ans"));
+        frames_content.push(include_str!("../frames/frame_179.ans"));
+        frames_content.push(include_str!("../frames/frame_180.ans"));
+        frames_content.push(include_str!("../frames/frame_181.ans"));
+        frames_content.push(include_str!("../frames/frame_182.ans"));
+        frames_content.push(include_str!("../frames/frame_183.ans"));
+        frames_content.push(include_str!("../frames/frame_184.ans"));
+        frames_content.push(include_str!("../frames/frame_185.ans"));
+        frames_content.push(include_str!("../frames/frame_186.ans"));
+
+        frames_content
+            .into_iter()
+            .map(|frame_content| frame_content.as_bytes().into_text().unwrap())
+            .collect()
+    };
+}
+
 pub fn run_animation(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
 ) -> Result<(), Box<dyn Error>> {
-    let mut frame_files: Vec<String> = fs::read_dir("frames")?
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                e.path()
-                    .file_name()
-                    .and_then(|n| n.to_str().map(String::from))
-            })
-        })
-        .collect();
-    frame_files.sort();
-
-    let frames: Vec<String> = frame_files
-        .iter()
-        .map(|file_name| fs::read_to_string(format!("frames/{}", file_name)).unwrap_or_default())
-        .collect();
-
-    let preprocessed_frames: Vec<Text> = frames
-        .iter()
-        .map(|frame_content| frame_content.as_bytes().into_text().unwrap())
-        .collect();
-
     let mut frame_index = 0;
     let frame_duration = Duration::from_millis(50);
 
@@ -71,7 +251,7 @@ pub fn run_animation(
             let area = f.area();
             f.render_widget(Clear, area);
 
-            let ansi_text = &preprocessed_frames[frame_index];
+            let ansi_text = &PREPROCESSED_FRAMES[frame_index];
 
             let vertical_layout = Layout::default()
                 .direction(Direction::Vertical)
@@ -103,7 +283,7 @@ pub fn run_animation(
             }
         }
 
-        frame_index = (frame_index + 1) % preprocessed_frames.len();
+        frame_index = (frame_index + 1) % PREPROCESSED_FRAMES.len();
 
         let elapsed_time = start_time.elapsed();
         if elapsed_time < frame_duration {
@@ -115,7 +295,7 @@ pub fn run_animation(
 }
 
 pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
-    let mut nothing_bruh_content = fs::read_to_string("nothing_bruh.ans")?;
+    let mut nothing_bruh_content = include_str!("../nothing_bruh.ans").to_string();
 
     #[cfg(windows)]
     {
