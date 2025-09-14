@@ -1,13 +1,13 @@
-# git-watcher
+# KWIS watcher !!
 
 A command-line tool to watch git repositories and display changes in real-time.
 
 ## Installation
 
-To install `git-watcher`, make sure you have Rust and Cargo installed, then run:
+To install `kris-watcher`, make sure you have Rust and Cargo installed, then run:
 
 ```bash
-cargo install git-watcher
+cargo install kris-watcher
 ```
 
 ## Usage
@@ -15,7 +15,11 @@ cargo install git-watcher
 Once installed, navigate to a git repository and run:
 
 ```bash
-git-watcher
+kris-watcher
 ```
 
-This will start watching the current directory for git changes and display them.
+If you want to make kris auto save youre work, run the cmd using --autosave
+
+```bash
+kris-watcher --autosave
+```
