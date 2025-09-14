@@ -14,11 +14,16 @@ use std::error::Error;
 use std::io::{self, Stdout};
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Duration;
-use std::time::Instant;
 
 pub enum AnimationResult {
     Commit,
     Quit,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum PopupSelection {
+    Yes,
+    No,
 }
 
 pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>, Box<dyn Error>> {
@@ -241,12 +246,6 @@ lazy_static! {
     };
 }
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum PopupSelection {
-    Yes,
-    No,
-}
-
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default() 
         .direction(Direction::Vertical)
@@ -279,7 +278,7 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
 
     f.render_widget(Clear, popup_area);
 
-    let popup_block = Block::default()
+    let popup_block = Block::default() 
         .title(" Uncommitted Changes ")
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Yellow));
@@ -328,93 +327,74 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
     f.render_widget(no_button, button_chunks[1]);
 }
 
-pub fn run_animation(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    show_popup_rx: Receiver<()>, 
-    reset_timer_tx: Sender<()>, 
-) -> Result<AnimationResult, Box<dyn Error>> {
-    let mut frame_index = 0;
-    let frame_duration = Duration::from_millis(60);
-    let mut show_popup = false;
-    let mut popup_selection = PopupSelection::Yes;
+pub fn get_frame_count() -> usize {
+    PREPROCESSED_FRAMES.len()
+}
 
-    loop {
-        if show_popup_rx.try_recv().is_ok() {
-            show_popup = true;
-        }
+pub fn draw_ui(f: &mut Frame, frame_index: usize, show_popup: bool, popup_selection: &PopupSelection) {
+    let area = f.area();
+    f.render_widget(Clear, area);
 
-        let start_time = Instant::now();
+    let ansi_text = &PREPROCESSED_FRAMES[frame_index];
 
-        terminal.draw(|f| {
-            let area = f.area();
-            f.render_widget(Clear, area);
+    let vertical_layout = Layout::default() 
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(40),
+            Constraint::Min(0),
+        ])
+        .split(area);
 
-            let ansi_text = &PREPROCESSED_FRAMES[frame_index];
+    let horizontal_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(80),
+            Constraint::Min(0),
+        ])
+        .split(vertical_layout[1]);
 
-            let vertical_layout = Layout::default() 
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(0),
-                    Constraint::Length(40),
-                    Constraint::Min(0),
-                ])
-                .split(area);
+    let paragraph = Paragraph::new(ansi_text.clone()).alignment(Alignment::Center);
+    f.render_widget(paragraph, horizontal_layout[1]);
 
-            let horizontal_layout = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([
-                    Constraint::Min(0),
-                    Constraint::Length(80),
-                    Constraint::Min(0),
-                ])
-                .split(vertical_layout[1]);
+    if show_popup {
+        draw_commit_popup(f, popup_selection);
+    }
+}
 
-            let paragraph = Paragraph::new(ansi_text.clone()).alignment(Alignment::Center);
-            f.render_widget(paragraph, horizontal_layout[1]);
-
-            if show_popup {
-                draw_commit_popup(f, &popup_selection);
-            }
-        })?;
-
-        if crossterm::event::poll(Duration::from_millis(10))? {
-            if let Event::Key(key) = event::read()? {
-                if show_popup {
-                    match key.code {
-                        KeyCode::Left | KeyCode::Char('h') => popup_selection = PopupSelection::Yes,
-                        KeyCode::Right | KeyCode::Char('l') => popup_selection = PopupSelection::No,
-                        KeyCode::Enter => match popup_selection {
-                            PopupSelection::Yes => {
-                                return Ok(AnimationResult::Commit);
-                            }
+pub fn handle_events(
+    show_popup: &mut bool,
+    popup_selection: &mut PopupSelection, 
+    reset_timer_tx: &Sender<()>, 
+) -> Result<Option<AnimationResult>, Box<dyn Error>> {
+    if crossterm::event::poll(Duration::from_millis(10))? {
+        if let Event::Key(key) = event::read()? {
+            if *show_popup {
+                match key.code {
+                    KeyCode::Left | KeyCode::Char('h') => *popup_selection = PopupSelection::Yes,
+                    KeyCode::Right | KeyCode::Char('l') => *popup_selection = PopupSelection::No,
+                    KeyCode::Enter => {
+                        match popup_selection {
+                            PopupSelection::Yes => return Ok(Some(AnimationResult::Commit)),
                             PopupSelection::No => {
-                                show_popup = false;
+                                *show_popup = false;
                                 reset_timer_tx.send(()).ok();
-                            }
-                        },
-                        KeyCode::Char('q') | KeyCode::Char('Q') => {
-                            if show_popup {
-                                show_popup = false;
-                                reset_timer_tx.send(()).ok();
-                            } else {
-                                return Ok(AnimationResult::Quit);
                             }
                         }
-                        _ => {}
                     }
-                } else if key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
-                    return Ok(AnimationResult::Quit);
+                    KeyCode::Char('q') | KeyCode::Char('Q') => {
+                        *show_popup = false;
+                        reset_timer_tx.send(()).ok();
+                    }
+                    _ => {}
                 }
+            } else if key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
+                return Ok(Some(AnimationResult::Quit));
             }
         }
-
-        frame_index = (frame_index + 1) % PREPROCESSED_FRAMES.len();
-
-        let elapsed_time = start_time.elapsed();
-        if elapsed_time < frame_duration {
-            std::thread::sleep(frame_duration - elapsed_time);
-        }
     }
+    Ok(None)
 }
 
 pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
