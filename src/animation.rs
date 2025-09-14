@@ -320,7 +320,7 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
     let popup_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .style(Style::default().fg(Color::Rgb(255, 215, 0)));
+        .style(Style::default().fg(Color::Rgb(255, 255, 255)));
 
     let inner_area = popup_block.inner(popup_area);
     f.render_widget(popup_block, popup_area);
@@ -331,7 +331,7 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
         .split(inner_area);
 
     let question = Paragraph::new(
-        "You have uncommitted changes for over an hour. Do you want to commit them?",
+        "ayo! you have uncommitted changes for over an hour. Do ya want to commit them?",
     )
     .wrap(Wrap { trim: true })
     .alignment(Alignment::Left)
@@ -345,7 +345,7 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
         .split(chunks[1]);
 
     let yes_style = if *selected == PopupSelection::Yes {
-        Style::default().fg(Color::Rgb(10, 200, 10))
+        Style::default().fg(Color::Rgb(255, 255, 255))
     } else {
         Style::default().fg(Color::Rgb(128, 128, 128))
     };
@@ -360,7 +360,7 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
     f.render_widget(yes_button, button_chunks[0]);
 
     let no_style = if *selected == PopupSelection::No {
-        Style::default().fg(Color::Rgb(200, 10, 10))
+        Style::default().fg(Color::Rgb(255, 255, 255))
     } else {
         Style::default().fg(Color::Rgb(128, 128, 128))
     };
@@ -388,16 +388,13 @@ fn draw_notifications(f: &mut Frame, notifs: &VecDeque<Notification>) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(notifs.len() as u16 + 2), // +2 for borders
+                Constraint::Length(notifs.len() as u16 + 2),
                 Constraint::Min(0),
             ])
             .split(f.area());
         Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(40), // 40% width
-                Constraint::Min(0),
-            ])
+            .constraints([Constraint::Percentage(30), Constraint::Min(0)])
             .split(chunks[0])[0]
     };
 
