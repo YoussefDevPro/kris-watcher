@@ -6,15 +6,20 @@ use crossterm::{
 };
 use lazy_static::lazy_static;
 use ratatui::{
-    crossterm::event::KeyCode,
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::*,
-    widgets::{Clear, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 use std::error::Error;
 use std::io::{self, Stdout};
+use std::sync::mpsc::{Receiver, Sender};
 use std::time::Duration;
 use std::time::Instant;
+
+pub enum AnimationResult {
+    Commit,
+    Quit,
+}
 
 pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>, Box<dyn Error>> {
     let mut stdout = io::stdout();
@@ -41,13 +46,7 @@ pub fn restore_terminal(
 lazy_static! {
     static ref PREPROCESSED_FRAMES: Vec<Text<'static>> = {
         let mut frames_content: Vec<&'static str> = Vec::new();
-        frames_content.push(include_str!("../frames/frame_000.ans")); // this freaking thing is
-                                                                      // made by ai, okay ?  don't
-                                                                      // judge me, i want to do it
-                                                                      // like that >:3
-                                                                      // and mamnav i see u from
-                                                                      // there, don't bother others
-                                                                      // 3:<
+        frames_content.push(include_str!("../frames/frame_000.ans"));
         frames_content.push(include_str!("../frames/frame_001.ans"));
         frames_content.push(include_str!("../frames/frame_002.ans"));
         frames_content.push(include_str!("../frames/frame_003.ans"));
@@ -242,13 +241,108 @@ lazy_static! {
     };
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum PopupSelection {
+    Yes,
+    No,
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default() 
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
+}
+
+fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
+    let area = f.area();
+    let popup_area = centered_rect(50, 20, area);
+
+    f.render_widget(Clear, popup_area);
+
+    let popup_block = Block::default()
+        .title(" Uncommitted Changes ")
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Yellow));
+
+    let inner_area = popup_block.inner(popup_area);
+    f.render_widget(popup_block, popup_area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
+        .split(inner_area);
+
+    let question = 
+        Paragraph::new("You have uncommitted changes for over an hour. Do you want to commit them?")
+            .wrap(Wrap { trim: true })
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::White));
+    f.render_widget(question, chunks[0]);
+
+    let button_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .horizontal_margin(1)
+        .split(chunks[1]);
+
+    let yes_style = if *selected == PopupSelection::Yes {
+        Style::default().fg(Color::White).bg(Color::Green)
+    } else {
+        Style::default().fg(Color::Black).bg(Color::DarkGray)
+    };
+    let yes_button = Paragraph::new("Yes")
+        .style(yes_style)
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(yes_button, button_chunks[0]);
+
+    let no_style = if *selected == PopupSelection::No {
+        Style::default().fg(Color::White).bg(Color::Red)
+    } else {
+        Style::default().fg(Color::Black).bg(Color::DarkGray)
+    };
+    let no_button = Paragraph::new("No")
+        .style(no_style)
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(no_button, button_chunks[1]);
+}
+
 pub fn run_animation(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-) -> Result<(), Box<dyn Error>> {
+    show_popup_rx: Receiver<()>, 
+    reset_timer_tx: Sender<()>, 
+) -> Result<AnimationResult, Box<dyn Error>> {
     let mut frame_index = 0;
     let frame_duration = Duration::from_millis(60);
+    let mut show_popup = false;
+    let mut popup_selection = PopupSelection::Yes;
 
     loop {
+        if show_popup_rx.try_recv().is_ok() {
+            show_popup = true;
+        }
+
         let start_time = Instant::now();
 
         terminal.draw(|f| {
@@ -257,7 +351,7 @@ pub fn run_animation(
 
             let ansi_text = &PREPROCESSED_FRAMES[frame_index];
 
-            let vertical_layout = Layout::default()
+            let vertical_layout = Layout::default() 
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Min(0),
@@ -277,12 +371,39 @@ pub fn run_animation(
 
             let paragraph = Paragraph::new(ansi_text.clone()).alignment(Alignment::Center);
             f.render_widget(paragraph, horizontal_layout[1]);
+
+            if show_popup {
+                draw_commit_popup(f, &popup_selection);
+            }
         })?;
 
         if crossterm::event::poll(Duration::from_millis(10))? {
             if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
-                    break;
+                if show_popup {
+                    match key.code {
+                        KeyCode::Left | KeyCode::Char('h') => popup_selection = PopupSelection::Yes,
+                        KeyCode::Right | KeyCode::Char('l') => popup_selection = PopupSelection::No,
+                        KeyCode::Enter => match popup_selection {
+                            PopupSelection::Yes => {
+                                return Ok(AnimationResult::Commit);
+                            }
+                            PopupSelection::No => {
+                                show_popup = false;
+                                reset_timer_tx.send(()).ok();
+                            }
+                        },
+                        KeyCode::Char('q') | KeyCode::Char('Q') => {
+                            if show_popup {
+                                show_popup = false;
+                                reset_timer_tx.send(()).ok();
+                            } else {
+                                return Ok(AnimationResult::Quit);
+                            }
+                        }
+                        _ => {}
+                    }
+                } else if key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
+                    return Ok(AnimationResult::Quit);
                 }
             }
         }
@@ -294,8 +415,6 @@ pub fn run_animation(
             std::thread::sleep(frame_duration - elapsed_time);
         }
     }
-
-    Ok(())
 }
 
 pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {

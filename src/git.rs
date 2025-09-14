@@ -1,8 +1,9 @@
 use notify_rust::Notification;
 use regex::Regex;
 use std::process::Command;
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy)]
 pub struct GitStats {
@@ -11,14 +12,46 @@ pub struct GitStats {
     pub total_changes: u32,
 }
 
-pub fn git_watcher_loop() {
+pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>) {
+    let mut uncommitted_changes_start_time: Option<Instant> = None;
     let mut previous_stats: Option<GitStats> = None;
+    let mut last_notification_time = Instant::now();
 
     loop {
+        if reset_timer_rx.try_recv().is_ok() {
+            uncommitted_changes_start_time = None;
+        }
+
         let current_stats = get_git_diff_stats();
-        send_notification(current_stats, previous_stats);
-        previous_stats = current_stats;
-        thread::sleep(Duration::from_secs(20 * 60)); // 20 minutes
+
+        if let Some(stats) = &current_stats {
+            if stats.total_changes > 0 {
+                if uncommitted_changes_start_time.is_none() {
+                    uncommitted_changes_start_time = Some(Instant::now());
+                }
+
+                if let Some(start_time) = uncommitted_changes_start_time {
+                    if start_time.elapsed() > Duration::from_secs(20) {
+                        if show_popup_tx.send(()).is_ok() {
+                            uncommitted_changes_start_time = None;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            } else {
+                uncommitted_changes_start_time = None;
+            }
+        } // aaaa commit aaaaaaa
+
+        // the notification is here, the other things is when the user really forgor to commit
+        if last_notification_time.elapsed() > Duration::from_secs(20 * 60) {
+            send_notification(current_stats, previous_stats);
+            previous_stats = current_stats;
+            last_notification_time = Instant::now();
+        }
+
+        thread::sleep(Duration::from_secs(60));
     }
 }
 
