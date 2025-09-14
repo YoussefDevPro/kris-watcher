@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::*,
-    widgets::{Block, Borders, BorderType, Clear, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Clear, Paragraph, Wrap},
 };
 use std::collections::VecDeque;
 use std::error::Error;
@@ -56,7 +56,8 @@ impl NotificationManager {
     }
 
     pub fn update(&mut self, max_age: Duration) {
-        self.notifications.retain(|n| n.timestamp.elapsed() < max_age);
+        self.notifications
+            .retain(|n| n.timestamp.elapsed() < max_age);
     }
 
     pub fn get_notifications(&self) -> &VecDeque<Notification> {
@@ -285,7 +286,7 @@ lazy_static! {
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default() 
+    let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
             [
@@ -312,14 +313,14 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
     let area = f.area();
-    let popup_area = centered_rect(40, 20, area);
+    let popup_area = centered_rect(25, 15, area);
 
     f.render_widget(Clear, popup_area);
 
-    let popup_block = Block::default() 
+    let popup_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .style(Style::default().fg(Color::Yellow));
+        .style(Style::default().fg(Color::Rgb(255, 215, 0)));
 
     let inner_area = popup_block.inner(popup_area);
     f.render_widget(popup_block, popup_area);
@@ -329,11 +330,12 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
         .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
         .split(inner_area);
 
-    let question = 
-        Paragraph::new("You have uncommitted changes for over an hour. Do you want to commit them?")
-            .wrap(Wrap { trim: true })
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(Color::White));
+    let question = Paragraph::new(
+        "You have uncommitted changes for over an hour. Do you want to commit them?",
+    )
+    .wrap(Wrap { trim: true })
+    .alignment(Alignment::Left)
+    .style(Style::default().fg(Color::Rgb(255, 255, 255)));
     f.render_widget(question, chunks[0]);
 
     let button_chunks = Layout::default()
@@ -343,25 +345,33 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
         .split(chunks[1]);
 
     let yes_style = if *selected == PopupSelection::Yes {
-        Style::default().fg(Color::Green)
+        Style::default().fg(Color::Rgb(10, 200, 10))
     } else {
-        Style::default().fg(Color::Gray)
+        Style::default().fg(Color::Rgb(128, 128, 128))
     };
     let yes_button = Paragraph::new("Yes")
         .style(yes_style)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
     f.render_widget(yes_button, button_chunks[0]);
 
     let no_style = if *selected == PopupSelection::No {
-        Style::default().fg(Color::Red)
+        Style::default().fg(Color::Rgb(200, 10, 10))
     } else {
-        Style::default().fg(Color::Gray)
+        Style::default().fg(Color::Rgb(128, 128, 128))
     };
     let no_button = Paragraph::new("No")
         .style(no_style)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+        );
     f.render_widget(no_button, button_chunks[1]);
 }
 
@@ -395,7 +405,10 @@ fn draw_notifications(f: &mut Frame, notifs: &VecDeque<Notification>) {
         .title("Notifications")
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded);
-    let text: Vec<Line> = notifs.iter().map(|n| Line::from(n.message.as_str())).collect();
+    let text: Vec<Line> = notifs
+        .iter()
+        .map(|n| Line::from(n.message.as_str()))
+        .collect();
     let paragraph = Paragraph::new(text).block(notif_block);
 
     f.render_widget(paragraph, notif_area);
@@ -413,7 +426,7 @@ pub fn draw_ui(
 
     let ansi_text = &PREPROCESSED_FRAMES[frame_index];
 
-    let vertical_layout = Layout::default() 
+    let vertical_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(0),
@@ -440,11 +453,11 @@ pub fn draw_ui(
 
     draw_notifications(f, notifications);
 }
-
+// testn  a
 pub fn handle_events(
     show_popup: &mut bool,
-    popup_selection: &mut PopupSelection, 
-    reset_timer_tx: &Sender<()>, 
+    popup_selection: &mut PopupSelection,
+    reset_timer_tx: &Sender<()>,
 ) -> Result<Option<AnimationResult>, Box<dyn Error>> {
     if crossterm::event::poll(Duration::from_millis(10))? {
         if let Event::Key(key) = event::read()? {
@@ -452,15 +465,13 @@ pub fn handle_events(
                 match key.code {
                     KeyCode::Left | KeyCode::Char('h') => *popup_selection = PopupSelection::Yes,
                     KeyCode::Right | KeyCode::Char('l') => *popup_selection = PopupSelection::No,
-                    KeyCode::Enter => {
-                        match popup_selection {
-                            PopupSelection::Yes => return Ok(Some(AnimationResult::Commit)),
-                            PopupSelection::No => {
-                                *show_popup = false;
-                                reset_timer_tx.send(()).ok();
-                            }
+                    KeyCode::Enter => match popup_selection {
+                        PopupSelection::Yes => return Ok(Some(AnimationResult::Commit)),
+                        PopupSelection::No => {
+                            *show_popup = false;
+                            reset_timer_tx.send(()).ok();
                         }
-                    }
+                    },
                     KeyCode::Char('q') | KeyCode::Char('Q') => {
                         *show_popup = false;
                         reset_timer_tx.send(()).ok();
