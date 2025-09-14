@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
 
         let mut terminal = animation::setup_terminal()?;
+        let mut notification_manager = animation::NotificationManager::new(5);
 
         let mut frame_index = 0;
         let frame_duration = Duration::from_millis(60);
@@ -26,21 +27,41 @@ fn main() -> Result<(), Box<dyn Error>> {
         loop {
             if show_popup_rx.try_recv().is_ok() {
                 show_popup = true;
+                notification_manager.add_notif("Popup appeared!".to_string());
             }
 
+            notification_manager.update(Duration::from_secs(10));
+
             terminal.draw(|f| {
-                animation::draw_ui(f, frame_index, show_popup, &popup_selection);
+                animation::draw_ui(
+                    f,
+                    frame_index,
+                    show_popup,
+                    &popup_selection,
+                    notification_manager.get_notifications(),
+                );
             })?;
 
             if let Some(result) = animation::handle_events(&mut show_popup, &mut popup_selection, &reset_timer_tx)? {
                 match result {
                     animation::AnimationResult::Commit => {
-                        Command::new("git").arg("add").arg(".").status()?;
-                        Command::new("git")
-                            .arg("commit")
-                            .arg("-m")
-                            .arg("this commit is made by kwis uwu")
-                            .status()?;
+                        let output = Command::new("git").arg("add").arg(".").output()?;
+                        if output.status.success() {
+                            let commit_output = Command::new("git")
+                                .arg("commit")
+                                .arg("-m")
+                                .arg("this commit is made by kwis uwu")
+                                .output()?;
+                            if commit_output.status.success() {
+                                notification_manager.add_notif("Changes committed successfully!".to_string());
+                            } else {
+                                let error_message = String::from_utf8_lossy(&commit_output.stderr);
+                                notification_manager.add_notif(format!("Commit failed: {}", error_message));
+                            }
+                        } else {
+                            let error_message = String::from_utf8_lossy(&output.stderr);
+                            notification_manager.add_notif(format!("git add failed: {}", error_message));
+                        }
                         show_popup = false;
                         reset_timer_tx.send(()).ok();
                     }

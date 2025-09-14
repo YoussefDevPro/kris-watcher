@@ -10,10 +10,11 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
+use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{self, Stdout};
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub enum AnimationResult {
     Commit,
@@ -24,6 +25,43 @@ pub enum AnimationResult {
 pub enum PopupSelection {
     Yes,
     No,
+}
+
+pub struct Notification {
+    pub message: String,
+    pub timestamp: Instant,
+}
+
+pub struct NotificationManager {
+    notifications: VecDeque<Notification>,
+    max_notifs: usize,
+}
+
+impl NotificationManager {
+    pub fn new(max_notifs: usize) -> Self {
+        Self {
+            notifications: VecDeque::new(),
+            max_notifs,
+        }
+    }
+
+    pub fn add_notif(&mut self, message: String) {
+        if self.notifications.len() == self.max_notifs {
+            self.notifications.pop_front();
+        }
+        self.notifications.push_back(Notification {
+            message,
+            timestamp: Instant::now(),
+        });
+    }
+
+    pub fn update(&mut self, max_age: Duration) {
+        self.notifications.retain(|n| n.timestamp.elapsed() < max_age);
+    }
+
+    pub fn get_notifications(&self) -> &VecDeque<Notification> {
+        &self.notifications
+    }
 }
 
 pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>, Box<dyn Error>> {
@@ -331,7 +369,42 @@ pub fn get_frame_count() -> usize {
     PREPROCESSED_FRAMES.len()
 }
 
-pub fn draw_ui(f: &mut Frame, frame_index: usize, show_popup: bool, popup_selection: &PopupSelection) {
+fn draw_notifications(f: &mut Frame, notifs: &VecDeque<Notification>) {
+    if notifs.is_empty() {
+        return;
+    }
+
+    let notif_area = {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(notifs.len() as u16 + 2), // +2 for borders
+                Constraint::Min(0),
+            ])
+            .split(f.area());
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(40), // 40% width
+                Constraint::Min(0),
+            ])
+            .split(chunks[0])[0]
+    };
+
+    let notif_block = Block::default().title("Notifications").borders(Borders::ALL);
+    let text: Vec<Line> = notifs.iter().map(|n| Line::from(n.message.as_str())).collect();
+    let paragraph = Paragraph::new(text).block(notif_block);
+
+    f.render_widget(paragraph, notif_area);
+}
+
+pub fn draw_ui(
+    f: &mut Frame,
+    frame_index: usize,
+    show_popup: bool,
+    popup_selection: &PopupSelection,
+    notifications: &VecDeque<Notification>,
+) {
     let area = f.area();
     f.render_widget(Clear, area);
 
@@ -361,6 +434,8 @@ pub fn draw_ui(f: &mut Frame, frame_index: usize, show_popup: bool, popup_select
     if show_popup {
         draw_commit_popup(f, popup_selection);
     }
+
+    draw_notifications(f, notifications);
 }
 
 pub fn handle_events(
