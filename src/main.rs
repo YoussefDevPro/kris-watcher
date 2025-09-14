@@ -7,7 +7,31 @@ use std::time::Duration;
 mod animation;
 mod git;
 
+fn perform_commit(notification_manager: &mut animation::NotificationManager) -> Result<(), Box<dyn Error>> {
+    let output = Command::new("git").arg("add").arg(".").output()?;
+    if output.status.success() {
+        let commit_output = Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg("this commit is made by kwis uwu")
+            .output()?;
+        if commit_output.status.success() {
+            notification_manager.add_notif("Changes committed successfully!".to_string());
+        } else {
+            let error_message = String::from_utf8_lossy(&commit_output.stderr);
+            notification_manager.add_notif(format!("Commit failed: {}", error_message));
+        }
+    } else {
+        let error_message = String::from_utf8_lossy(&output.stderr);
+        notification_manager.add_notif(format!("git add failed: {}", error_message));
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    let autosave_mode = args.contains(&"--autosave".to_string());
+
     if git::is_in_git_repo() {
         let (show_popup_tx, show_popup_rx) = mpsc::channel();
         let (reset_timer_tx, reset_timer_rx) = mpsc::channel();
@@ -26,8 +50,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         loop {
             if show_popup_rx.try_recv().is_ok() {
-                show_popup = true;
-                notification_manager.add_notif("Popup appeared!".to_string());
+                if autosave_mode {
+                    notification_manager.add_notif("Auto-committing changes...".to_string());
+                    perform_commit(&mut notification_manager)?;
+                    reset_timer_tx.send(()).ok();
+                } else {
+                    show_popup = true;
+                    notification_manager.add_notif("Popup appeared!".to_string());
+                }
             }
 
             notification_manager.update(Duration::from_secs(30));
@@ -47,26 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             {
                 match result {
                     animation::AnimationResult::Commit => {
-                        let output = Command::new("git").arg("add").arg(".").output()?;
-                        if output.status.success() {
-                            let commit_output = Command::new("git")
-                                .arg("commit")
-                                .arg("-m")
-                                .arg("this commit is made by kwis uwu")
-                                .output()?;
-                            if commit_output.status.success() {
-                                notification_manager
-                                    .add_notif("Changes committed successfully!".to_string());
-                            } else {
-                                let error_message = String::from_utf8_lossy(&commit_output.stderr);
-                                notification_manager
-                                    .add_notif(format!("Commit failed: {}", error_message));
-                            }
-                        } else {
-                            let error_message = String::from_utf8_lossy(&output.stderr);
-                            notification_manager
-                                .add_notif(format!("git add failed: {}", error_message));
-                        }
+                        perform_commit(&mut notification_manager)?;
                         show_popup = false;
                         reset_timer_tx.send(()).ok();
                     }
