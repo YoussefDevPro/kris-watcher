@@ -42,9 +42,8 @@ pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>)
             } else {
                 uncommitted_changes_start_time = None;
             }
-        } // aaaa commit aaaaaaa aaaaa aaaaaaaagaaaaaain aa aaaaaaaaaaaaqa
-          //aa                   aaaa qqq
-          // the notification is here, the other things is when the user really forgor to commit
+        }
+        // the notification is here, the other things is when the user really forgor to commit
         if last_notification_time.elapsed() > Duration::from_secs(20 * 60) {
             send_notification(current_stats, previous_stats);
             previous_stats = current_stats;
@@ -119,10 +118,7 @@ fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<Git
             if current.insertions == 0 && current.deletions == 0 {
                 message.push_str("Nu-nu changes yet? owo Time to get to wowk!");
             } else {
-                message.push_str(&format!(
-                    "You have {} insewtions and {} dewetions, nyaa! ",
-                    current.insertions, current.deletions
-                ));
+                message.push_str(&"nyaa! ".to_string());
 
                 if let Some(previous) = previous_stats {
                     if current.deletions > previous.deletions && current.deletions > 10 {

@@ -13,7 +13,7 @@ use ratatui::{
 use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{self, Stdout};
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
 pub enum AnimationResult {
@@ -450,7 +450,7 @@ pub fn draw_ui(
 
     draw_notifications(f, notifications);
 }
-// testn  a
+
 pub fn handle_events(
     show_popup: &mut bool,
     popup_selection: &mut PopupSelection,
@@ -488,9 +488,9 @@ pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
 
     #[cfg(windows)]
     {
-        nothing_bruh_content = nothing_bruh_content.replace("\n", "\r\n");
+        nothing_bruh_content = nothing_bruh_content.replace("\n", "\r\n"); // like, WTF
     }
-
+    println!();
     println!("dude, wth do u want me to watch if there is no repo, i need my friend git to tell me the freaking changes u have made");
     print!("{}", nothing_bruh_content);
     Ok(())
