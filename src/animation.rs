@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::*,
-    widgets::{Block, Borders, Clear, Paragraph, Wrap},
+    widgets::{Block, Borders, BorderType, Clear, Paragraph, Wrap},
 };
 use std::collections::VecDeque;
 use std::error::Error;
@@ -312,13 +312,13 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
     let area = f.area();
-    let popup_area = centered_rect(50, 20, area);
+    let popup_area = centered_rect(40, 20, area);
 
     f.render_widget(Clear, popup_area);
 
     let popup_block = Block::default() 
-        .title(" Uncommitted Changes ")
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .style(Style::default().fg(Color::Yellow));
 
     let inner_area = popup_block.inner(popup_area);
@@ -343,25 +343,25 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
         .split(chunks[1]);
 
     let yes_style = if *selected == PopupSelection::Yes {
-        Style::default().fg(Color::White).bg(Color::Green)
+        Style::default().fg(Color::Green)
     } else {
-        Style::default().fg(Color::Black).bg(Color::DarkGray)
+        Style::default().fg(Color::Gray)
     };
     let yes_button = Paragraph::new("Yes")
         .style(yes_style)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL));
+        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
     f.render_widget(yes_button, button_chunks[0]);
 
     let no_style = if *selected == PopupSelection::No {
-        Style::default().fg(Color::White).bg(Color::Red)
+        Style::default().fg(Color::Red)
     } else {
-        Style::default().fg(Color::Black).bg(Color::DarkGray)
+        Style::default().fg(Color::Gray)
     };
     let no_button = Paragraph::new("No")
         .style(no_style)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL));
+        .block(Block::default().borders(Borders::ALL).border_type(BorderType::Rounded));
     f.render_widget(no_button, button_chunks[1]);
 }
 
@@ -391,7 +391,10 @@ fn draw_notifications(f: &mut Frame, notifs: &VecDeque<Notification>) {
             .split(chunks[0])[0]
     };
 
-    let notif_block = Block::default().title("Notifications").borders(Borders::ALL);
+    let notif_block = Block::default()
+        .title("Notifications")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded);
     let text: Vec<Line> = notifs.iter().map(|n| Line::from(n.message.as_str())).collect();
     let paragraph = Paragraph::new(text).block(notif_block);
 

@@ -42,7 +42,7 @@ pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>)
             } else {
                 uncommitted_changes_start_time = None;
             }
-        } // aaaa commit aaaaaaa aaaaa aaaaaaaagaaaaaain
+        } // aaaa commit aaaaaaa aaaaa aaaaaaaagaaaaaain aa
 
         // the notification is here, the other things is when the user really forgor to commit
         if last_notification_time.elapsed() > Duration::from_secs(20 * 60) {
