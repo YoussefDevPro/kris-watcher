@@ -6,6 +6,7 @@ use crossterm::{
 };
 use lazy_static::lazy_static;
 use ratatui::{
+    crossterm::event::KeyCode,
     layout::{Alignment, Constraint, Direction, Layout},
     prelude::*,
     widgets::{Clear, Paragraph},
@@ -44,6 +45,9 @@ lazy_static! {
                                                                       // made by ai, okay ?  don't
                                                                       // judge me, i want to do it
                                                                       // like that >:3
+                                                                      // and mamnav i see u from
+                                                                      // there, don't bother others
+                                                                      // 3:<
         frames_content.push(include_str!("../frames/frame_001.ans"));
         frames_content.push(include_str!("../frames/frame_002.ans"));
         frames_content.push(include_str!("../frames/frame_003.ans"));
@@ -242,7 +246,7 @@ pub fn run_animation(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
 ) -> Result<(), Box<dyn Error>> {
     let mut frame_index = 0;
-    let frame_duration = Duration::from_millis(50);
+    let frame_duration = Duration::from_millis(60);
 
     loop {
         let start_time = Instant::now();
@@ -277,7 +281,7 @@ pub fn run_animation(
 
         if crossterm::event::poll(Duration::from_millis(10))? {
             if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') {
+                if key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
                     break;
                 }
             }
@@ -302,6 +306,7 @@ pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
         nothing_bruh_content = nothing_bruh_content.replace("\n", "\r\n");
     }
 
+    println!("dude, wth do u want me to watch if there is no repo, i need my friend git to tell me the freaking changes u have made");
     print!("{}", nothing_bruh_content);
     Ok(())
 }

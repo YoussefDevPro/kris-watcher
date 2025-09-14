@@ -18,7 +18,7 @@ pub fn git_watcher_loop() {
         let current_stats = get_git_diff_stats();
         send_notification(current_stats, previous_stats);
         previous_stats = current_stats;
-        thread::sleep(Duration::from_secs(30 * 60)); // 30 minutes
+        thread::sleep(Duration::from_secs(20 * 60)); // 20 minutes
     }
 }
 
@@ -84,7 +84,7 @@ fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<Git
             let mut message = String::new();
 
             if current.insertions == 0 && current.deletions == 0 {
-                message.push_str("Nu-nu changes yet? Owo Time to get to wowk!");
+                message.push_str("Nu-nu changes yet? owo Time to get to wowk!");
             } else {
                 message.push_str(&format!(
                     "You have {} insewtions and {} dewetions, nyaa! ",
@@ -131,7 +131,7 @@ fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<Git
     };
 
     Notification::new()
-        .summary("Git Watcher")
+        .summary("Kwis :3")
         .body(&body)
         .show()
         .unwrap();
