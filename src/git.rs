@@ -31,7 +31,7 @@ pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>)
                 }
 
                 if let Some(start_time) = uncommitted_changes_start_time {
-                    if start_time.elapsed() > Duration::from_secs(20) {
+                    if start_time.elapsed() > Duration::from_secs(3600 / 2) {
                         if show_popup_tx.send(()).is_ok() {
                             uncommitted_changes_start_time = None;
                         } else {
@@ -44,7 +44,7 @@ pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>)
             }
         }
         // the notification is here, the other things is when the user really forgor to commit
-        if last_notification_time.elapsed() > Duration::from_secs(20 * 60) {
+        if last_notification_time.elapsed() > Duration::from_secs(10 * 60) {
             send_notification(current_stats, previous_stats);
             previous_stats = current_stats;
             last_notification_time = Instant::now();
