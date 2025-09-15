@@ -1,4 +1,6 @@
+use crossterm::{cursor, execute, style, terminal};
 use std::error::Error;
+use std::io::stdout;
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
@@ -31,6 +33,27 @@ fn perform_commit(
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    eprintln!("\nthread 'main' panicked at 'a critical error occurred: could not connect to the git daemon', src/main.rs:10:5");
+    thread::sleep(Duration::from_secs(3));
+    {
+        let mut stdout = stdout();
+        execute!(
+            stdout,
+            cursor::MoveUp(2),
+            terminal::Clear(terminal::ClearType::FromCursorDown),
+            style::Print("\n>:D ha! just kidding!")
+        )?;
+    }
+    thread::sleep(Duration::from_secs(1));
+    {
+        let mut stdout = stdout();
+        execute!(
+            stdout,
+            cursor::MoveToColumn(0),
+            terminal::Clear(terminal::ClearType::CurrentLine)
+        )?;
+    }
+
     let args: Vec<String> = std::env::args().collect();
     let autosave_mode = args.contains(&"--autosave".to_string());
 
