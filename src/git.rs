@@ -12,7 +12,11 @@ pub struct GitStats {
     pub total_changes: u32,
 }
 
-pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>) {
+pub fn git_watcher_loop(
+    show_popup_tx: Sender<()>, 
+    reset_timer_rx: Receiver<()>, 
+    loop_delay: Duration,
+) {
     let mut uncommitted_changes_start_time: Option<Instant> = None;
     let mut previous_stats: Option<GitStats> = None;
     let mut last_notification_time = Instant::now();
@@ -31,7 +35,7 @@ pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>)
                 }
 
                 if let Some(start_time) = uncommitted_changes_start_time {
-                    if start_time.elapsed() > Duration::from_secs(10) {
+                    if start_time.elapsed() > Duration::from_secs(60*60) {
                         if show_popup_tx.send(()).is_ok() {
                             uncommitted_changes_start_time = None;
                         } else {
@@ -43,14 +47,14 @@ pub fn git_watcher_loop(show_popup_tx: Sender<()>, reset_timer_rx: Receiver<()>)
                 uncommitted_changes_start_time = None;
             }
         }
-        // the notification is here, the other things is when the user really forgor to commit
-        if last_notification_time.elapsed() > Duration::from_secs(5) {
+        
+        if last_notification_time.elapsed() > loop_delay {
             send_notification(current_stats, previous_stats);
             previous_stats = current_stats;
             last_notification_time = Instant::now();
         }
 
-        thread::sleep(Duration::from_secs(60));
+        thread::sleep(loop_delay);
     }
 }
 
