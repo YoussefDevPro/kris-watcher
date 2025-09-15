@@ -31,7 +31,44 @@ fn perform_commit(
     }
     Ok(())
 }
-
+//aaa
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//aaaaaaaaaaaaaaaaaa aaaaaaaqqqqqqqqqqqqa
 fn main() -> Result<(), Box<dyn Error>> {
     eprintln!("\nthread 'main' panicked at 'a critical error occurred: could not connect to the git daemon', src/main.rs:10:5");
     thread::sleep(Duration::from_secs(3));
@@ -80,7 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 reset_timer_tx.send(()).ok();
             }
 
-            notification_manager.update(Duration::from_secs(30));
+            notification_manager.update(Duration::from_secs(15 * 60));
 
             terminal.draw(|f| {
                 animation::draw_ui(
