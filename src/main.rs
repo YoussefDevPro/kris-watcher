@@ -126,6 +126,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     show_popup,
                     &popup_selection,
                     notification_manager.get_notifications(),
+                    loop_delay,
                 );
             })?;
 

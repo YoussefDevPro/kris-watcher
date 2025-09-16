@@ -311,7 +311,24 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
+fn format_duration(duration: Duration) -> String {
+    let total_seconds = duration.as_secs();
+    if total_seconds == 1 {
+        "1 second".to_string()
+    } else if total_seconds < 60 {
+        format!("{} seconds", total_seconds)
+    } else if total_seconds < 120 {
+        "1 minute".to_string()
+    } else if total_seconds < 3600 {
+        format!("{} minutes", total_seconds / 60)
+    } else if total_seconds < 7200 {
+        "1 hour".to_string()
+    } else {
+        format!("{} hours", total_seconds / 3600)
+    }
+}
+
+fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection, loop_delay: Duration) {
     let area = f.area();
     let popup_area = centered_rect(25, 15, area);
 
@@ -330,12 +347,14 @@ fn draw_commit_popup(f: &mut Frame, selected: &PopupSelection) {
         .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
         .split(inner_area);
 
-    let question = Paragraph::new(
-        "ayo! you have uncommitted changes for over an hour. Do ya want to commit them?",
-    )
-    .wrap(Wrap { trim: true })
-    .alignment(Alignment::Left)
-    .style(Style::default().fg(Color::Rgb(255, 255, 255)));
+    let question_text = format!(
+        "ayo! you have uncommitted changes for over {}. Do ya want to commit them?",
+        format_duration(loop_delay)
+    );
+    let question = Paragraph::new(question_text)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Left)
+        .style(Style::default().fg(Color::Rgb(255, 255, 255)));
     f.render_widget(question, chunks[0]);
 
     let button_chunks = Layout::default()
@@ -417,6 +436,7 @@ pub fn draw_ui(
     show_popup: bool,
     popup_selection: &PopupSelection,
     notifications: &VecDeque<Notification>,
+    loop_delay: Duration,
 ) {
     let area = f.area();
     f.render_widget(Clear, area);
@@ -445,7 +465,7 @@ pub fn draw_ui(
     f.render_widget(paragraph, horizontal_layout[1]);
 
     if show_popup {
-        draw_commit_popup(f, popup_selection);
+        draw_commit_popup(f, popup_selection, loop_delay);
     }
 
     draw_notifications(f, notifications);
@@ -460,8 +480,8 @@ pub fn handle_events(
         if let Event::Key(key) = event::read()? {
             if *show_popup {
                 match key.code {
-                    KeyCode::Left | KeyCode::Char('h') => *popup_selection = PopupSelection::Yes,
-                    KeyCode::Right | KeyCode::Char('l') => *popup_selection = PopupSelection::No,
+                    KeyCode::Left | KeyCode::Char('y') => *popup_selection = PopupSelection::Yes,
+                    KeyCode::Right | KeyCode::Char('n') => *popup_selection = PopupSelection::No,
                     KeyCode::Enter => match popup_selection {
                         PopupSelection::Yes => return Ok(Some(AnimationResult::Commit)),
                         PopupSelection::No => {
@@ -490,6 +510,7 @@ pub fn display_nothing_bruh() -> Result<(), Box<dyn Error>> {
     {
         nothing_bruh_content = nothing_bruh_content.replace("\n", "\r\n"); // like, WTF
     }
+
     println!();
     println!("dude, wth do u want me to watch if there is no repo, i need my friend git to tell me the freaking changes u have made");
     print!("{}", nothing_bruh_content);

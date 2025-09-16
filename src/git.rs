@@ -13,17 +13,14 @@ pub struct GitStats {
 }
 
 pub fn git_watcher_loop(
-    show_popup_tx: Sender<()>, 
-    reset_timer_rx: Receiver<()>, 
+    show_popup_tx: Sender<()>,
+    _reset_timer_rx: Receiver<()>,
     loop_delay: Duration,
 ) {
     let mut previous_stats: Option<GitStats> = None;
     let mut last_notification_time = Instant::now();
 
     loop {
-        if reset_timer_rx.try_recv().is_ok() {
-        }
-
         let current_stats = get_git_diff_stats();
 
         if last_notification_time.elapsed() > loop_delay {
@@ -75,9 +72,10 @@ pub fn get_git_diff_stats() -> Option<GitStats> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let re =
-        Regex::new(r"(\d+)?(?: file)s? changed(?:, (\d+)? insertions?\(\+\))?(?:, (\d+)? deletions?\(-\))?")
-            .unwrap();
+    let re = Regex::new(
+        r"(\d+)?(?: file)s? changed(?:, (\d+)? insertions?\(\+\))?(?:, (\d+)? deletions?\(-\))?",
+    )
+    .unwrap();
 
     let mut insertions = 0;
     let mut deletions = 0;
@@ -121,29 +119,30 @@ fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<Git
                     } else if current.insertions > previous.insertions && current.insertions > 20 {
                         // becoming real ig
                         message.push_str(
-                            "Wow, a sudden buwst of coding! Keep dat momentum going, uwu!",
+                            "Wow, a sudden buwst of coding! Keep dat momentum going, uwu! ",
                         );
                     } else if current.deletions > current.insertions && current.deletions > 10 {
                         // peak optimishashtiong :3
-                        message.push_str("Optimizing wike a pwo! Wess is mowe, wight? :3");
+                        message.push_str("Optimizing wike a pwo! Wess is mowe, wight? :3 ");
                     } else if current.insertions > current.deletions && current.insertions > 20 {
                         // too much insertion
-                        message.push_str("Wook at chu, coding away! Keep it up, nyaa!");
+                        message.push_str("Wook at chu, coding away! Keep it up, nyaa! ");
                     } else if current.total_changes > 30 && previous.total_changes < 5 {
                         // sudden tryharding
-                        message.push_str("You've been quiet, but now you'we a coding machine! OwO");
+                        message
+                            .push_str("You've been quiet, but now you'we a coding machine! UwU ");
                     }
                 } else {
                     // peak optomozation
                     if current.deletions > current.insertions && current.deletions > 10 {
-                        message.push_str("Optimizing wike a pwo! Wess is mowe, wight? :3");
+                        message.push_str("Optimizing wike a pwo! Wess is mowe, wight? :3 ");
                     } else if current.insertions > current.deletions && current.insertions > 20 {
-                        message.push_str("Wook at chu, coding away! Keep it up, nyaa!");
+                        message.push_str("Wook at chu, coding away! Keep it up, nyaa! ");
                     }
                 }
                 // do not forget to commit ur changes !!
                 if message.is_empty() || !message.contains("commit") {
-                    message.push_str("Don't fowget to commit youw changes, pwease! ^w^");
+                    message.push_str("Don't fowget to commit youw changes, pwease! ^w^ ");
                 }
             }
             message

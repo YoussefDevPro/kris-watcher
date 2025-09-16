@@ -1,6 +1,6 @@
 [package]
 name = "kris-watcher"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "hire this guy so he can make sure that u don't forget to git commit ur changes"
 license = "MIT"
