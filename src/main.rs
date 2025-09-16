@@ -8,7 +8,7 @@ use std::time::Duration;
 
 mod animation;
 mod git;
-
+//dd
 fn perform_commit(
     notification_manager: &mut animation::NotificationManager,
 ) -> Result<(), Box<dyn Error>> {
@@ -107,10 +107,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut popup_selection = animation::PopupSelection::Yes;
 
         loop {
-            if show_popup_rx.try_recv().is_ok() && autosave_mode {
-                notification_manager.add_notif("Auto-committing changes...".to_string());
-                perform_commit(&mut notification_manager)?;
-                reset_timer_tx.send(()).ok();
+            if show_popup_rx.try_recv().is_ok() {
+                if autosave_mode {
+                    notification_manager.add_notif("Auto-committing changes...".to_string());
+                    perform_commit(&mut notification_manager)?;
+                    reset_timer_tx.send(()).ok();
+                } else {
+                    show_popup = true;
+                }
             }
 
             notification_manager.update(Duration::from_secs(15 * 60));

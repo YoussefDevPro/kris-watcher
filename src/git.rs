@@ -17,41 +17,27 @@ pub fn git_watcher_loop(
     reset_timer_rx: Receiver<()>, 
     loop_delay: Duration,
 ) {
-    let mut uncommitted_changes_start_time: Option<Instant> = None;
     let mut previous_stats: Option<GitStats> = None;
     let mut last_notification_time = Instant::now();
 
     loop {
         if reset_timer_rx.try_recv().is_ok() {
-            uncommitted_changes_start_time = None;
         }
 
         let current_stats = get_git_diff_stats();
 
-        if let Some(stats) = &current_stats {
-            if stats.total_changes > 0 {
-                if uncommitted_changes_start_time.is_none() {
-                    uncommitted_changes_start_time = Some(Instant::now());
-                }
-
-                if let Some(start_time) = uncommitted_changes_start_time {
-                    if start_time.elapsed() > Duration::from_secs(60*60) {
-                        if show_popup_tx.send(()).is_ok() {
-                            uncommitted_changes_start_time = None;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            } else {
-                uncommitted_changes_start_time = None;
-            }
-        }
-        
         if last_notification_time.elapsed() > loop_delay {
             send_notification(current_stats, previous_stats);
             previous_stats = current_stats;
             last_notification_time = Instant::now();
+        }
+
+        if let Some(stats) = &current_stats {
+            if stats.total_changes > 0 {
+                if show_popup_tx.send(()).is_err() {
+                    break;
+                }
+            }
         }
 
         thread::sleep(loop_delay);
