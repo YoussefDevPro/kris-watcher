@@ -4,7 +4,7 @@ pub struct Config {
     pub autosave_mode: bool,
     pub loop_delay: Duration,
 }
-
+//aa
 impl Config {
     pub fn new() -> Result<Self, String> {
         let args: Vec<String> = std::env::args().collect();
