@@ -31,27 +31,6 @@ By default, the git watcher loop has a delay of 15 minutes. You can configure th
 For example, to set the loop delay to 10 seconds:
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ```bash
 kris-watcher -l 10s
 ```
