@@ -1,65 +1,105 @@
-use crossterm::{cursor, execute, style, terminal};
 use std::error::Error;
-use std::io::stdout;
-use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-mod animation;
+mod config;
 mod git;
-//dd
-fn perform_commit(
-    notification_manager: &mut animation::NotificationManager,
-) -> Result<(), Box<dyn Error>> {
-    let output = Command::new("git").arg("add").arg(".").output()?;
-    if output.status.success() {
-        let commit_output = Command::new("git")
-            .arg("commit")
-            .arg("-m")
-            .arg("this commit is made by kwis uwu")
-            .output()?;
-        if commit_output.status.success() {
-            notification_manager.add_notif("Changes committed successfully!".to_string());
-        } else {
-            let error_message = String::from_utf8_lossy(&commit_output.stderr);
-            notification_manager.add_notif(format!("Commit failed: {}", error_message));
-        }
+mod tui;
+mod uwu;
+
+use config::Config;
+use tui::{
+    animation,
+    events::{self, AnimationResult, PopupSelection},
+    notifications::NotificationManager,
+    terminal, ui,
+};
+
+fn main() -> Result<(), Box<dyn Error>> {
+    show_prank()?; // >:3c
+
+    let config = Config::new().map_err(|e| e.to_string())?;
+
+    if git::is_in_git_repo() {
+        run_app(config)?;
     } else {
-        let error_message = String::from_utf8_lossy(&output.stderr);
-        notification_manager.add_notif(format!("git add failed: {}", error_message));
+        ui::display_nothing_bruh()?;
     }
+
     Ok(())
 }
 
-fn parse_duration(s: &str) -> Result<Duration, String> {
-    let s = s.trim();
-    let mut numeric_part = String::new();
-    let mut unit_part = String::new();
+fn run_app(config: Config) -> Result<(), Box<dyn Error>> {
+    let (show_popup_tx, show_popup_rx) = mpsc::channel();
+    let (reset_timer_tx, reset_timer_rx) = mpsc::channel();
 
-    for c in s.chars() {
-        if c.is_digit(10) || c == '.' {
-            numeric_part.push(c);
-        } else {
-            unit_part.push(c);
+    let loop_delay = config.loop_delay;
+    thread::spawn(move || {
+        git::git_watcher_loop(show_popup_tx, reset_timer_rx, loop_delay);
+    });
+
+    let mut terminal = terminal::setup_terminal()?;
+    let mut notification_manager = NotificationManager::new(5);
+
+    let mut frame_index = 0;
+    let frame_duration = Duration::from_millis(60);
+    let mut show_popup = false;
+    let mut popup_selection = PopupSelection::Yes;
+
+    loop {
+        if show_popup_rx.try_recv().is_ok() {
+            if config.autosave_mode {
+                notification_manager.add_notif("Auto-committing changes...".to_string());
+                git::perform_commit(&mut notification_manager)?;
+                reset_timer_tx.send(()).ok();
+            } else {
+                show_popup = true;
+            }
         }
-    }
-    //q
-    let value: f64 = numeric_part
-        .parse()
-        .map_err(|_| "Invalid number".to_string())?;
-    let unit = unit_part.trim();
 
-    match unit {
-        "s" | "sec" => Ok(Duration::from_secs_f64(value)),
-        "m" | "min" => Ok(Duration::from_secs_f64(value * 60.0)),
-        "h" => Ok(Duration::from_secs_f64(value * 3600.0)),
-        _ => Err("Invalid time unit".to_string()),
+        notification_manager.update(Duration::from_secs(15 * 60));
+
+        terminal.draw(|f| {
+            ui::draw_ui(
+                f,
+                frame_index,
+                show_popup,
+                &popup_selection,
+                notification_manager.get_notifications(),
+                config.loop_delay,
+            );
+        })?;
+
+        if let Some(result) =
+            events::handle_events(&mut show_popup, &mut popup_selection, &reset_timer_tx)?
+        {
+            match result {
+                AnimationResult::Commit => {
+                    git::perform_commit(&mut notification_manager)?;
+                    show_popup = false;
+                    reset_timer_tx.send(()).ok();
+                }
+                AnimationResult::Quit => {
+                    break;
+                }
+            }
+        }
+
+        frame_index = (frame_index + 1) % animation::get_frame_count();
+        thread::sleep(frame_duration);
     }
+
+    terminal::restore_terminal(&mut terminal)?;
+    Ok(())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    eprintln!("\nthread 'main' panicked at 'a critical error occurred: could not connect to the git daemon', src/main.rs:10:5");
+fn show_prank() -> Result<(), Box<dyn Error>> {
+    use crossterm::{cursor, execute, style, terminal};
+    use std::io::stdout;
+
+    eprintln!("
+thread 'main' panicked at 'a critical error occurred: could not connect to the git daemon', src/main.rs:10:5");
     thread::sleep(Duration::from_secs(3));
     {
         let mut stdout = stdout();
@@ -67,7 +107,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             stdout,
             cursor::MoveUp(2),
             terminal::Clear(terminal::ClearType::FromCursorDown),
-            style::Print("\n>:D ha! just kidding!")
+            style::Print(
+                "
+>:D ha! just kidding!"
+            )
         )?;
     }
     thread::sleep(Duration::from_secs(1));
@@ -79,80 +122,5 @@ fn main() -> Result<(), Box<dyn Error>> {
             terminal::Clear(terminal::ClearType::CurrentLine)
         )?;
     }
-
-    let args: Vec<String> = std::env::args().collect();
-    let autosave_mode = args.contains(&"--autosave".to_string());
-    let mut loop_delay = Duration::from_secs(15 * 60);
-
-    if let Some(pos) = args.iter().position(|s| s == "-l" || s == "--loop-delay") {
-        if let Some(value_str) = args.get(pos + 1) {
-            loop_delay = parse_duration(value_str).unwrap_or(loop_delay);
-        }
-    }
-
-    if git::is_in_git_repo() {
-        let (show_popup_tx, show_popup_rx) = mpsc::channel();
-        let (reset_timer_tx, reset_timer_rx) = mpsc::channel();
-
-        thread::spawn(move || {
-            git::git_watcher_loop(show_popup_tx, reset_timer_rx, loop_delay);
-        });
-
-        let mut terminal = animation::setup_terminal()?;
-        let mut notification_manager = animation::NotificationManager::new(5);
-
-        let mut frame_index = 0;
-        let frame_duration = Duration::from_millis(60);
-        let mut show_popup = false;
-        let mut popup_selection = animation::PopupSelection::Yes;
-
-        loop {
-            if show_popup_rx.try_recv().is_ok() {
-                if autosave_mode {
-                    notification_manager.add_notif("Auto-committing changes...".to_string());
-                    perform_commit(&mut notification_manager)?;
-                    reset_timer_tx.send(()).ok();
-                } else {
-                    show_popup = true;
-                }
-            }
-
-            notification_manager.update(Duration::from_secs(15 * 60));
-
-            terminal.draw(|f| {
-                animation::draw_ui(
-                    f,
-                    frame_index,
-                    show_popup,
-                    &popup_selection,
-                    notification_manager.get_notifications(),
-                    loop_delay,
-                );
-            })?;
-
-            if let Some(result) =
-                animation::handle_events(&mut show_popup, &mut popup_selection, &reset_timer_tx)?
-            {
-                match result {
-                    animation::AnimationResult::Commit => {
-                        perform_commit(&mut notification_manager)?;
-                        show_popup = false;
-                        reset_timer_tx.send(()).ok();
-                    }
-                    animation::AnimationResult::Quit => {
-                        break;
-                    }
-                }
-            }
-
-            frame_index = (frame_index + 1) % animation::get_frame_count();
-            thread::sleep(frame_duration);
-        }
-
-        animation::restore_terminal(&mut terminal)?;
-    } else {
-        animation::display_nothing_bruh()?;
-    }
-
     Ok(())
 }

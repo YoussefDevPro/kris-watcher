@@ -1,5 +1,8 @@
+use crate::tui::notifications::NotificationManager;
+use crate::uwu;
 use notify_rust::Notification;
 use regex::Regex;
+use std::error::Error;
 use std::process::Command;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
@@ -10,6 +13,29 @@ pub struct GitStats {
     pub insertions: u32,
     pub deletions: u32,
     pub total_changes: u32,
+}
+
+pub fn perform_commit(
+    notification_manager: &mut NotificationManager,
+) -> Result<(), Box<dyn Error>> {
+    let output = Command::new("git").arg("add").arg(".").output()?;
+    if output.status.success() {
+        let commit_output = Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg(uwu::get_commit_message())
+            .output()?;
+        if commit_output.status.success() {
+            notification_manager.add_notif("Changes committed successfully!".to_string());
+        } else {
+            let error_message = String::from_utf8_lossy(&commit_output.stderr);
+            notification_manager.add_notif(format!("Commit failed: {}", error_message));
+        }
+    } else {
+        let error_message = String::from_utf8_lossy(&output.stderr);
+        notification_manager.add_notif(format!("git add failed: {}", error_message));
+    }
+    Ok(())
 }
 
 pub fn git_watcher_loop(
@@ -101,54 +127,7 @@ pub fn get_git_diff_stats() -> Option<GitStats> {
 }
 
 fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<GitStats>) {
-    let body = match current_stats {
-        Some(current) => {
-            let mut message = String::new();
-
-            if current.insertions == 0 && current.deletions == 0 {
-                message.push_str("Nu-nu changes yet? owo Time to get to wowk!");
-            } else {
-                message.push_str(&"nyaa! ".to_string());
-
-                if let Some(previous) = previous_stats {
-                    if current.deletions > previous.deletions && current.deletions > 10 {
-                        // deleting a lot for some reason
-                        message.push_str(
-                            "You'we on a deweting spwee! Cweaning up code wike a boss! ^w^",
-                        );
-                    } else if current.insertions > previous.insertions && current.insertions > 20 {
-                        // becoming real ig
-                        message.push_str(
-                            "Wow, a sudden buwst of coding! Keep dat momentum going, uwu! ",
-                        );
-                    } else if current.deletions > current.insertions && current.deletions > 10 {
-                        // peak optimishashtiong :3
-                        message.push_str("Optimizing wike a pwo! Wess is mowe, wight? :3 ");
-                    } else if current.insertions > current.deletions && current.insertions > 20 {
-                        // too much insertion
-                        message.push_str("Wook at chu, coding away! Keep it up, nyaa! ");
-                    } else if current.total_changes > 30 && previous.total_changes < 5 {
-                        // sudden tryharding
-                        message
-                            .push_str("You've been quiet, but now you'we a coding machine! UwU ");
-                    }
-                } else {
-                    // peak optomozation
-                    if current.deletions > current.insertions && current.deletions > 10 {
-                        message.push_str("Optimizing wike a pwo! Wess is mowe, wight? :3 ");
-                    } else if current.insertions > current.deletions && current.insertions > 20 {
-                        message.push_str("Wook at chu, coding away! Keep it up, nyaa! ");
-                    }
-                }
-                // do not forget to commit ur changes !!
-                if message.is_empty() || !message.contains("commit") {
-                    message.push_str("Don't fowget to commit youw changes, pwease! ^w^ ");
-                }
-            }
-            message
-        }
-        None => "Don't fowget to commit youw changes, pwease! ^w^".to_string(),
-    };
+    let body = uwu::get_notification_body(current_stats, previous_stats);
 
     Notification::new()
         .summary("Kwis :3")
