@@ -89,7 +89,6 @@ pub fn get_git_diff_stats() -> Option<GitStats> {
     let mut total_insertions = 0;
     let mut total_deletions = 0;
 
-    // Get stats for unstaged changes
     if let Ok(output) = Command::new("git")
         .arg("diff")
         .arg("--shortstat")
@@ -104,7 +103,6 @@ pub fn get_git_diff_stats() -> Option<GitStats> {
         }
     }
 
-    // Get stats for staged changes
     if let Ok(output) = Command::new("git")
         .arg("diff")
         .arg("--shortstat")
