@@ -183,7 +183,9 @@ pub fn draw_ui(
         ])
         .split(vertical_layout[1]);
 
-    let paragraph = Paragraph::new(ansi_text).block(Block::default());
+    let paragraph = Paragraph::new(ansi_text)
+        .block(Block::default())
+        .alignment(Alignment::Center);
     f.render_widget(paragraph, horizontal_layout[1]);
 
     if show_popup {
