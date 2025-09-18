@@ -198,12 +198,37 @@ lazy_static! {
             .map(|frame_content| frame_content.as_bytes().into_text().unwrap())
             .collect()
     };
+    static ref SHIGGY_FRAMES: Vec<Text<'static>> = {
+        let mut frames_content: Vec<&'static str> = Vec::new();
+        frames_content.push(include_str!("../../shiggy/1_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/2_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/3_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/4_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/5_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/6_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/7_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/8_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/9_optimized.trans"));
+        frames_content.push(include_str!("../../shiggy/10_optimized.trans"));
+        frames_content
+            .into_iter()
+            .map(|frame_content| frame_content.as_bytes().into_text().unwrap())
+            .collect()
+    };
 }
 
-pub fn get_frame_count() -> usize {
-    PREPROCESSED_FRAMES.len()
+pub fn get_frame_count(shiggy_mode: bool) -> usize {
+    if shiggy_mode {
+        SHIGGY_FRAMES.len()
+    } else {
+        PREPROCESSED_FRAMES.len()
+    }
 }
 
-pub fn get_frame(index: usize) -> Text<'static> {
-    PREPROCESSED_FRAMES[index].clone()
+pub fn get_frame(index: usize, shiggy_mode: bool) -> Text<'static> {
+    if shiggy_mode {
+        SHIGGY_FRAMES[index].clone()
+    } else {
+        PREPROCESSED_FRAMES[index].clone()
+    }
 }

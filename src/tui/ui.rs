@@ -158,11 +158,12 @@ pub fn draw_ui(
     popup_selection: &PopupSelection,
     notifications: &VecDeque<Notification>,
     loop_delay: Duration,
+    shiggy_mode: bool,
 ) {
     let area = f.area();
     f.render_widget(Clear, area);
 
-    let ansi_text = animation::get_frame(frame_index);
+    let ansi_text = animation::get_frame(frame_index, shiggy_mode);
 
     let vertical_layout = Layout::default()
         .direction(Direction::Vertical)

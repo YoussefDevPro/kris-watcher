@@ -68,6 +68,7 @@ fn run_app(config: Config) -> Result<(), Box<dyn Error>> {
                 &popup_selection,
                 notification_manager.get_notifications(),
                 config.loop_delay,
+                config.shiggy_mode,
             );
         })?;
 
@@ -86,7 +87,7 @@ fn run_app(config: Config) -> Result<(), Box<dyn Error>> {
             }
         }
 
-        frame_index = (frame_index + 1) % animation::get_frame_count();
+        frame_index = (frame_index + 1) % animation::get_frame_count(config.shiggy_mode);
         thread::sleep(frame_duration);
     }
 
