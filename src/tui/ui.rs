@@ -164,6 +164,7 @@ pub fn draw_ui(
     f.render_widget(Clear, area);
 
     let ansi_text = animation::get_frame(frame_index, shiggy_mode);
+    let frame_width = ansi_text.width() as u16;
 
     let vertical_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -178,12 +179,12 @@ pub fn draw_ui(
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Min(0),
-            Constraint::Length(80),
+            Constraint::Length(frame_width),
             Constraint::Min(0),
         ])
         .split(vertical_layout[1]);
 
-    let paragraph = Paragraph::new(ansi_text).block(Block::default().borders(Borders::ALL));
+    let paragraph = Paragraph::new(ansi_text).block(Block::default());
     f.render_widget(paragraph, horizontal_layout[1]);
 
     if show_popup {
