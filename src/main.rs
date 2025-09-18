@@ -43,7 +43,7 @@ fn run_app(config: Config) -> Result<(), Box<dyn Error>> {
     let mut notification_manager = NotificationManager::new(5);
 
     let mut frame_index = 0;
-    let frame_duration = Duration::from_millis(60);
+    let frame_duration = Duration::from_millis(30);
     let mut show_popup = false;
     let mut popup_selection = PopupSelection::Yes;
 
