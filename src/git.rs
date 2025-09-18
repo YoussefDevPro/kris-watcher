@@ -86,18 +86,53 @@ pub fn is_in_git_repo() -> bool {
 }
 
 pub fn get_git_diff_stats() -> Option<GitStats> {
-    let output = Command::new("git")
+    let mut total_insertions = 0;
+    let mut total_deletions = 0;
+
+    // Get stats for unstaged changes
+    if let Ok(output) = Command::new("git")
         .arg("diff")
         .arg("--shortstat")
         .arg("HEAD")
         .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
+    {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let (insertions, deletions) = parse_shortstat(&stdout);
+            total_insertions += insertions;
+            total_deletions += deletions;
+        }
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Get stats for staged changes
+    if let Ok(output) = Command::new("git")
+        .arg("diff")
+        .arg("--shortstat")
+        .arg("--cached")
+        .output()
+    {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let (insertions, deletions) = parse_shortstat(&stdout);
+            total_insertions += insertions;
+            total_deletions += deletions;
+        }
+    }
+
+    let total_changes = total_insertions + total_deletions;
+
+    if total_changes > 0 {
+        Some(GitStats {
+            insertions: total_insertions,
+            deletions: total_deletions,
+            total_changes,
+        })
+    } else {
+        None
+    }
+}
+
+fn parse_shortstat(stdout: &str) -> (u32, u32) {
     let re = Regex::new(
         r"(\d+)?(?: file)s? changed(?:, (\d+)? insertions?\(\+\))?(?:, (\d+)? deletions?\(-\))?",
     )
@@ -106,7 +141,7 @@ pub fn get_git_diff_stats() -> Option<GitStats> {
     let mut insertions = 0;
     let mut deletions = 0;
 
-    if let Some(captures) = re.captures(stdout.as_ref()) {
+    if let Some(captures) = re.captures(stdout) {
         insertions = captures
             .get(2)
             .and_then(|m| m.as_str().parse().ok())
@@ -117,13 +152,7 @@ pub fn get_git_diff_stats() -> Option<GitStats> {
             .unwrap_or(0);
     }
 
-    let total_changes = insertions + deletions;
-
-    Some(GitStats {
-        insertions,
-        deletions,
-        total_changes,
-    })
+    (insertions, deletions)
 }
 
 fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<GitStats>) {
