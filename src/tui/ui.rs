@@ -164,12 +164,13 @@ pub fn draw_ui(
     f.render_widget(Clear, area);
 
     let ansi_text = animation::get_frame(frame_index, shiggy_mode);
+    let frame_height = ansi_text.height() as u16;
 
     let vertical_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(0),
-            Constraint::Length(40),
+            Constraint::Length(frame_height),
             Constraint::Min(0),
         ])
         .split(area);
