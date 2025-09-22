@@ -1,6 +1,6 @@
 [package]
 name = "kris-watcher"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 description = "hire this guy so he can make sure that u don't forget to git commit ur changes"
 license = "MIT"
@@ -16,5 +16,5 @@ crossterm = "0.27.0"
 ratatui = { version = "0.29.0", features = ["crossterm"] }
 regex = "1"
 lazy_static = "1.4.0"
-rodio = "0.17.3"
+rodio = "0.21.1"
 walkdir = "2.5.0"
