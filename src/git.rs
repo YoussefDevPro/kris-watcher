@@ -2,7 +2,9 @@ use crate::tui::notifications::NotificationManager;
 use crate::uwu;
 use notify_rust::Notification;
 use regex::Regex;
+use rodio::{OutputStream, Sink};
 use std::error::Error;
+use std::io::Cursor;
 use std::process::Command;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
@@ -14,6 +16,9 @@ pub struct GitStats {
     pub deletions: u32,
     pub total_changes: u32,
 }
+
+// https://www.youtube.com/watch?v=MxPVqoIJv7U :3
+// promised myself smt
 
 pub fn perform_commit(
     notification_manager: &mut NotificationManager,
@@ -42,9 +47,14 @@ pub fn git_watcher_loop(
     show_popup_tx: Sender<()>,
     _reset_timer_rx: Receiver<()>,
     loop_delay: Duration,
+    audio_alert_mode: bool,
+    _shiggy_mode: bool,
 ) {
     let mut previous_stats: Option<GitStats> = None;
     let mut last_notification_time = Instant::now();
+
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let sink = Sink::try_new(&stream_handle).unwrap();
 
     loop {
         let current_stats = get_git_diff_stats();
@@ -57,6 +67,12 @@ pub fn git_watcher_loop(
 
         if let Some(stats) = &current_stats {
             if stats.total_changes > 0 {
+                if audio_alert_mode && sink.empty() {
+                    let mp3_data = include_bytes!("../sounds/yes.mp3");
+                    if let Ok(source) = rodio::Decoder::new(Cursor::new(mp3_data)) {
+                        sink.append(source);
+                    }
+                }
                 if show_popup_tx.send(()).is_err() {
                     break;
                 }

@@ -35,8 +35,16 @@ fn run_app(config: Config) -> Result<(), Box<dyn Error>> {
     let (reset_timer_tx, reset_timer_rx) = mpsc::channel();
 
     let loop_delay = config.loop_delay;
+    let audio_alert_mode = config.audio_alert_mode;
+    let shiggy_mode = config.shiggy_mode;
     thread::spawn(move || {
-        git::git_watcher_loop(show_popup_tx, reset_timer_rx, loop_delay);
+        git::git_watcher_loop(
+            show_popup_tx,
+            reset_timer_rx,
+            loop_delay,
+            audio_alert_mode,
+            shiggy_mode,
+        );
     });
 
     let mut terminal = terminal::setup_terminal()?;

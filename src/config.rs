@@ -4,6 +4,7 @@ pub struct Config {
     pub autosave_mode: bool,
     pub loop_delay: Duration,
     pub shiggy_mode: bool,
+    pub audio_alert_mode: bool,
 }
 //aa
 impl Config {
@@ -11,6 +12,7 @@ impl Config {
         let args: Vec<String> = std::env::args().collect();
         let autosave_mode = args.contains(&"--autosave".to_string());
         let shiggy_mode = args.contains(&"--shiggy".to_string());
+        let audio_alert_mode = args.contains(&"-a".to_string());
         let mut loop_delay = Duration::from_secs(15 * 60);
 
         if let Some(pos) = args.iter().position(|s| s == "-l" || s == "--loop-delay") {
@@ -23,6 +25,7 @@ impl Config {
             autosave_mode,
             loop_delay,
             shiggy_mode,
+            audio_alert_mode,
         })
     }
 }

@@ -16,4 +16,5 @@ crossterm = "0.27.0"
 ratatui = { version = "0.29.0", features = ["crossterm"] }
 regex = "1"
 lazy_static = "1.4.0"
+rodio = "0.17.3"
 walkdir = "2.5.0"
