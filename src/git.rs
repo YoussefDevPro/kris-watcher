@@ -1,11 +1,11 @@
 use crate::tui::notifications::NotificationManager;
 use crate::uwu;
+use anyhow::Result;
+use git2::{Repository, StatusOptions}; // thx for @skyevg to tell me that there is a crate to do
+                                       // this instead of using cmds
 use notify_rust::Notification;
-use regex::Regex;
 use rodio::{OutputStream, Sink};
-use std::error::Error;
 use std::io::Cursor;
-use std::process::Command;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -17,30 +17,36 @@ pub struct GitStats {
     pub total_changes: u32,
 }
 
-// https://www.youtube.com/watch?v=MxPVqoIJv7U :3
-// promised myself smt
-
 pub fn perform_commit(
     notification_manager: &mut NotificationManager,
-) -> Result<(), Box<dyn Error>> {
-    let output = Command::new("git").arg("add").arg(".").output()?;
-    if output.status.success() {
-        let commit_output = Command::new("git")
-            .arg("commit")
-            .arg("-m")
-            .arg(uwu::get_commit_message())
-            .output()?;
-        if commit_output.status.success() {
-            notification_manager.add_notif("Changes committed successfully!".to_string());
-        } else {
-            let error_message = String::from_utf8_lossy(&commit_output.stderr);
-            notification_manager.add_notif(format!("Commit failed: {}", error_message));
-        }
-    } else {
-        let error_message = String::from_utf8_lossy(&output.stderr);
-        notification_manager.add_notif(format!("git add failed: {}", error_message));
-    }
+) -> Result<(), Box<dyn std::error::Error>> {
+    let repo = Repository::open(".")?;
+    let mut index = repo.index()?;
+    index.add_all(&["."], git2::IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+
+    let oid = index.write_tree()?;
+    let parent_commit = find_last_commit(&repo)?;
+    let tree = repo.find_tree(oid)?;
+
+    let signature = repo.signature()?;
+    repo.commit(
+        Some("HEAD"),
+        &signature,
+        &signature,
+        &uwu::get_commit_message(),
+        &tree,
+        &[&parent_commit],
+    )?;
+
+    notification_manager.add_notif("Changes committed successfully!".to_string());
     Ok(())
+}
+
+fn find_last_commit(repo: &Repository) -> Result<git2::Commit<'_>, git2::Error> {
+    let obj = repo.head()?.resolve()?.peel(git2::ObjectType::Commit)?;
+    obj.into_commit()
+        .map_err(|_| git2::Error::from_str("Couldn't find commit"))
 }
 
 pub fn git_watcher_loop(
@@ -57,7 +63,7 @@ pub fn git_watcher_loop(
     let sink = Sink::try_new(&stream_handle).unwrap();
 
     loop {
-        let current_stats = get_git_diff_stats();
+        let current_stats = get_git_diff_stats().ok().flatten();
 
         if last_notification_time.elapsed() > loop_delay {
             send_notification(current_stats, previous_stats);
@@ -84,89 +90,46 @@ pub fn git_watcher_loop(
 }
 
 pub fn is_in_git_repo() -> bool {
-    let output = Command::new("git")
-        .arg("rev-parse")
-        .arg("--is-inside-work-tree")
-        .output();
-
-    match output {
-        Ok(output) => {
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                return stdout.trim() == "true";
-            }
-            false
-        }
-        Err(_) => false,
-    }
+    Repository::open(".").is_ok()
 }
 
-pub fn get_git_diff_stats() -> Option<GitStats> {
-    let mut total_insertions = 0;
-    let mut total_deletions = 0;
+pub fn get_git_diff_stats() -> Result<Option<GitStats>> {
+    let repo = Repository::open(".")?;
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true);
 
-    if let Ok(output) = Command::new("git")
-        .arg("diff")
-        .arg("--shortstat")
-        .arg("HEAD")
-        .output()
-    {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let (insertions, deletions) = parse_shortstat(&stdout);
-            total_insertions += insertions;
-            total_deletions += deletions;
-        }
+    let statuses = repo.statuses(Some(&mut opts))?;
+    let mut total_changes = 0;
+    for entry in statuses.iter() {
+        total_changes += match entry.status() {
+            s if s.is_wt_new()
+                || s.is_wt_modified()
+                || s.is_wt_deleted()
+                || s.is_wt_renamed()
+                || s.is_wt_typechange()
+                || s.is_index_new()
+                || s.is_index_modified()
+                || s.is_index_deleted()
+                || s.is_index_renamed()
+                || s.is_index_typechange() =>
+            {
+                1
+            }
+            _ => 0,
+        };
     }
-
-    if let Ok(output) = Command::new("git")
-        .arg("diff")
-        .arg("--shortstat")
-        .arg("--cached")
-        .output()
-    {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let (insertions, deletions) = parse_shortstat(&stdout);
-            total_insertions += insertions;
-            total_deletions += deletions;
-        }
-    }
-
-    let total_changes = total_insertions + total_deletions;
 
     if total_changes > 0 {
-        Some(GitStats {
-            insertions: total_insertions,
-            deletions: total_deletions,
-            total_changes,
-        })
+        let diff = repo.diff_index_to_workdir(None, None)?;
+        let stats = diff.stats()?;
+        Ok(Some(GitStats {
+            insertions: stats.insertions() as u32,
+            deletions: stats.deletions() as u32,
+            total_changes: stats.files_changed() as u32,
+        }))
     } else {
-        None
+        Ok(None)
     }
-}
-
-fn parse_shortstat(stdout: &str) -> (u32, u32) {
-    let re = Regex::new(
-        r"(\d+)?(?: file)s? changed(?:, (\d+)? insertions?\(\+\))?(?:, (\d+)? deletions?\(-\))?",
-    )
-    .unwrap();
-
-    let mut insertions = 0;
-    let mut deletions = 0;
-
-    if let Some(captures) = re.captures(stdout) {
-        insertions = captures
-            .get(2)
-            .and_then(|m| m.as_str().parse().ok())
-            .unwrap_or(0);
-        deletions = captures
-            .get(3)
-            .and_then(|m| m.as_str().parse().ok())
-            .unwrap_or(0);
-    }
-
-    (insertions, deletions)
 }
 
 fn send_notification(current_stats: Option<GitStats>, previous_stats: Option<GitStats>) {
